@@ -211,8 +211,9 @@ PyTorch average time: 139.2600934579439s
 <div align="center">
     <img src="evaluation/ddpm-sample-pytorch/0.gif" width="256">
     <img src="evaluation/ddpm-sample-pytorch/16.png" width="256">
-    去噪过程 GIF (Pytorch) 
 </div>
+
+`去噪过程 GIF (Pytorch) `
 
 <div align="center">
     <img src="evaluation/ddpm-sample-pytorch/1.png" width="64">
@@ -231,14 +232,16 @@ PyTorch average time: 139.2600934579439s
     <img src="evaluation/ddpm-sample-pytorch/14.png" width="64">
     <img src="evaluation/ddpm-sample-pytorch/15.png" width="64">
     <img src="evaluation/ddpm-sample-pytorch/16.png" width="64">
-    去噪过程 PNG (Pytorch)
 </div>
+    
+`去噪过程 PNG (Pytorch)`
 
 <div align="center">
     <img src="evaluation/ddpm-sample-jittor/0.gif" width="256">
     <img src="evaluation/ddpm-sample-jittor/16.png" width="256">
-    去噪过程 GIF (Jittor) 
 </div>
+
+`去噪过程 GIF (Jittor) `
 
 <div align="center">
     <img src="evaluation/ddpm-sample-jittor/1.png" width="64">
@@ -257,8 +260,9 @@ PyTorch average time: 139.2600934579439s
     <img src="evaluation/ddpm-sample-jittor/14.png" width="64">
     <img src="evaluation/ddpm-sample-jittor/15.png" width="64">
     <img src="evaluation/ddpm-sample-jittor/16.png" width="64">
-    去噪过程 PNG (Pytorch)
 </div>
+
+`去噪过程 PNG (Pytorch)`
 
 # 四、参考文献/仓库
 
