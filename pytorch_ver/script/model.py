@@ -224,7 +224,7 @@ class DDPM:
         step_size = (self.T - 1) // (num_steps - 1)
         time_steps = list(range(0, self.T - 1, step_size))[:num_steps] + [self.T - 1]
         with torch.no_grad():
-            self.logger.info(f"Sampling {batch_size} x0...")
+            self.logger.info(f"Sampling {batch_size} x0 with {num_steps} steps...")
             time_start = time.time()
             xs = [] # 降噪结果
             x_t = torch.randn(batch_size, self.image_channels, 32, 32, device=self.device)
@@ -238,53 +238,6 @@ class DDPM:
             time_end = time.time()
             self.logger.info(f"Time cost: {time_end - time_start:.2f}s")
             return xs
-    
-    def test_samples(self, batch_size: int = 16):
-        self.denoise.eps_model.eval()
-        torch.no_grad()
-        dataset = get_dataset(self.data_root, self.dataset_name, train=False)[0][0]
-        self.logger.info(f"Test {len(dataset)} x0...")
-        time_start = time.time()
-        xs = []
-        
-        x_0 = dataset
-        x_0 = x_0.to(self.device)
-        x_t = self.denoise.q_sample(x_0, torch.full((batch_size,), self.T-1, device=self.device, dtype=torch.long), eps=None)
-        for t in reversed(range(0, self.T)):
-            t_tensor = torch.full((batch_size,), t, device=self.device, dtype=torch.long)
-            x_t = self.denoise.p_sample(x_t, t_tensor)
-        xs = [((x_0 + 1) / 2 * 255).clamp(0, 255).permute(0, 2, 3, 1).cpu(), ((x_t + 1) / 2 * 255).clamp(0, 255).permute(0, 2, 3, 1).cpu()]
-        time_end = time.time()
-        
-        self.logger.info(f"Test Time cost: {time_end - time_start:.2f}s")
-        return xs
-    
-    def test_samples_ddim(self, batch_size: int = 16, num_steps: int = 50, eta: float = 1.0):
-        self.denoise.eps_model.eval()
-        torch.no_grad()
-        step_size = (self.T - 1) // (num_steps - 1)
-        time_steps = list(range(0, self.T - 1, step_size))[:num_steps] + [self.T - 1]
-    
-        self.denoise.eps_model.eval()
-        torch.no_grad()
-        dataset = get_dataset(self.data_root, self.dataset_name, train=False)[0][0]
-        self.logger.info(f"Test {len(dataset)} x0...")
-        xs = []
-        time_start = time.time()
-        
-        x_0 = dataset
-        x_0 = x_0.to(self.device)
-        x_t = self.denoise.q_sample(x_0, torch.full((batch_size,), self.T-1, device=self.device, dtype=torch.long), eps=None)
-        t_next = torch.full((batch_size,), time_steps.pop(), device=self.device, dtype=torch.long)
-        while len(time_steps) > 0:
-            t_prev = torch.full((batch_size,), time_steps.pop(), device=self.device, dtype=torch.long)
-            x_t = self.denoise.p_sample_ddim(x_t, t_next, t_prev, eta)
-            t_next = t_prev
-        xs = [((x_0 + 1) / 2 * 255).clamp(0, 255).permute(0, 2, 3, 1).cpu(), ((x_t + 1) / 2 * 255).clamp(0, 255).permute(0, 2, 3, 1).cpu()]
-        
-        time_end = time.time()
-        self.logger.info(f"Test Time cost: {time_end - time_start:.2f}s")
-        return xs
 
     def extract_config(self):
         """

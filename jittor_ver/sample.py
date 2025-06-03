@@ -98,7 +98,7 @@ def main():
     parser.add_argument('--gif_time', type=int, default=8000)
     parser.add_argument('--gif_dt', type=int, default=None)
     
-    parser.add_argument('--model_path', type=str, default="eps_best.pkl")
+    parser.add_argument('--model_path', type=str, default="eps_best.pth")
     parser.add_argument('--config_path', type=str, default="eps_best.json")
     parser.add_argument('--log_root', type=str, default='logs/temp')
     parser.add_argument('--log', type=bool, default=True)

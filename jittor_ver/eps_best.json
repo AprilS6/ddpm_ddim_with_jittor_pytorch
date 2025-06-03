@@ -1,0 +1,36 @@
+{
+    "data_root": "../../data",
+    "dataset_name": "cifar10",
+    "num_epochs": 500,
+    "current_epoch": 79,
+    "batch_size": 128,
+    "num_workers": 12,
+    "T": 1000,
+    "lr": 0.0001,
+    "max_norm": 1.0,
+    "warmup": 5000,
+    "beta_1": 0.0001,
+    "beta_T": 0.02,
+    "device": "cuda",
+    "image_channels": 3,
+    "n_channels": 128,
+    "ch_mults": [
+        1,
+        2,
+        2,
+        2
+    ],
+    "is_attn": [
+        false,
+        true,
+        true,
+        false
+    ],
+    "n_blocks": 2,
+    "log": true,
+    "log_root": null,
+    "checkpoint": 5,
+    "only_checkpoint_max": true,
+    "loss": 0.029437573545652886,
+    "min_loss": 0.029437573545652886
+}

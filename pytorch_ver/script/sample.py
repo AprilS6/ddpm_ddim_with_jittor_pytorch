@@ -10,11 +10,11 @@
     --show_denoised: 展示降噪过程（默认展示16张）
     --batch_size: 批大小（默认为64）
     --gif_time: gif总时间，单位ms（默认8000ms）
-    --sample_root: 采样结果保存路径（默认为samples/）
+    --sample_root: 采样结果保存路径（默认为samples/{timestamp}）
     --num_workers: 线程数（默认为4）
     --device: 设备（优先为cuda）
     --log: 是否记录日志（默认为True）
-    --log_root: 日志保存路径（默认为logs/）
+    --log_root: 日志保存路径（默认为logs/{timestamp}/）
     --steps: 指定采样步数，不指定时使用DDPM，指定时使用DDIM
 """
 
@@ -24,13 +24,17 @@ import numpy as np
 from PIL import Image
 import os
 import time
+import tqdm
+import math
 
 from script.model import DDPM, default_config
+
 
 def gif_dt(n: int, d: int, total_sum: int):
     a0 = (2 * total_sum / n - (n - 1) * d) / 2
     assert a0 > 0
     return [int(a0 + d * i) for i in range(n)]
+
 
 def merge_xs(tbx):
     tbi = []
@@ -51,6 +55,36 @@ def merge_xs(tbx):
         full_image = Image.fromarray(full_image)
         tbi.append(full_image)
     return tbi
+
+
+def test_dataset(
+    config,
+    model_path,
+    batch_size,
+    steps,
+    sample_root="samples/test.npy",
+    num_samples=1000
+):
+    model = DDPM(config, model_path)
+    sample_bar = range(math.ceil(num_samples / batch_size))
+    sample_bar = tqdm.tqdm(sample_bar, desc="Sampling")
+    samples = np.empty((num_samples, 32, 32, 3))
+    for batch_idx in sample_bar:
+        bs = min(batch_size, num_samples - batch_idx * batch_size)
+        if steps is None:
+            xs = model.rand_sample_x0(
+                batch_size=bs,
+                show_denoised=1
+            )[0]
+        else:
+            xs = model.rand_sample_x0_ddim(
+                batch_size=bs,
+                show_denoised=1,
+                num_steps=steps
+            )[0]
+        samples[batch_idx*batch_size : batch_idx*batch_size+bs] = xs.numpy()
+    np.save(sample_root, samples)
+    
 
 def main():
     parser = argparse.ArgumentParser()
@@ -74,8 +108,15 @@ def main():
     
     config = default_config.copy() if args.config_path is None else json.load(open(args.config_path))
     config.update([(k, v) for k, v in vars(args).items() if v is not None])
-
+            
+    # 测试模式
+    if args.test:
+        test_dataset(config, args.model_path, args.batch_size, args.steps, args.sample_root)
+        return
+    
     # 采样
+    if not os.path.exists(args.sample_root):
+        os.makedirs(args.sample_root)
     model = DDPM(config, args.model_path)
     if args.steps is None:
         xs = model.rand_sample_x0(
@@ -89,19 +130,7 @@ def main():
             num_steps=args.steps
         )
         
-    if args.test:
-        if args.steps is None:
-            xs0, xs = model.test_samples()
-        else:
-            xs0, xs = model.test_samples_ddim(num_steps=args.steps)
-        for i in range(len(xs)):
-            Image.fromarray(xs0[i].numpy().astype(np.uint8)).save(os.path.join(args.sample_root, f'real_{i}.png'))
-            Image.fromarray(xs[i].numpy().astype(np.uint8)).save(os.path.join(args.sample_root, f'gen_{i}.png'))
-        return
-
     # 处理输出
-    if not os.path.exists(args.sample_root):
-        os.makedirs(args.sample_root)
     imgs = merge_xs(xs)
     args.gif_dt = args.gif_time // (len(imgs) * len(imgs)) if args.gif_dt is None else args.gif_dtr
     if len(imgs) > 1 and args.gif_time > 0:

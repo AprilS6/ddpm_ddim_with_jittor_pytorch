@@ -191,7 +191,6 @@ class DDPM:
     def rand_sample_x0(
         self,
         batch_size: int = 16,
-        # num_samples: int = 64,
         show_denoised: int = 16
     ):
         """
@@ -238,7 +237,7 @@ class DDPM:
         step_size = (self.T - 1) // (num_steps - 1)
         time_steps = list(range(0, self.T - 1, step_size))[:num_steps] + [self.T - 1]
         with jt.no_grad():
-            self.logger.info(f"Sampling {batch_size} x0...")
+            self.logger.info(f"Sampling {batch_size} x0 with {num_steps} steps...")
             time_start = time.time()
             xs = [] # 降噪结果
             x_t = jt.randn(batch_size, self.image_channels, 32, 32)
@@ -252,65 +251,6 @@ class DDPM:
             time_end = time.time()
             self.logger.info(f"Time cost: {time_end - time_start:.2f}s")
             return xs
-    
-    def test_samples(self):
-        self.denoise.eps_model.eval()
-        jt.no_grad()
-        dataset = get_dataset(self.data_root, self.dataset_name, train=False)
-        test_loader = DataLoader(
-            dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=False
-        )
-        self.logger.info(f"Test {len(dataset)} x0...")
-        time_start = time.time()
-        xs = []
-        for _, (x_0, _) in enumerate(test_loader):
-            x_0 = x_0.to(self.device)
-            x_t = self.denoise.q_sample(x_0, jt.full((self.batch_size,), self.T-1, dtype=jt.int32), eps=None)
-            for t in reversed(range(0, self.T)):
-                t_tensor = jt.full((self.batch_size,), t, dtype=jt.int32)
-                x_t = self.denoise.p_sample(x_t, t_tensor)
-            if len(xs) == 0:
-                xs.append([((x_0 + 1) / 2 * 255).clamp(0, 255).permute(0, 2, 3, 1).cpu(), ((x_t + 1) / 2 * 255).clamp(0, 255).permute(0, 2, 3, 1).cpu()])
-        time_end = time.time()
-        self.logger.info(f"Test Time cost: {time_end - time_start:.2f}s")
-        return xs
-    
-    def test_samples_ddim(self, num_steps: int = 50, eta: float = 1.0):
-        self.denoise.eps_model.eval()
-        jt.no_grad()
-        step_size = (self.T - 1) // (num_steps - 1)
-        time_steps = list(range(0, self.T - 1, step_size))[:num_steps] + [self.T - 1]
-    
-        self.denoise.eps_model.eval()
-        jt.no_grad()
-        dataset = get_dataset(self.data_root, self.dataset_name, train=False)
-        test_loader = DataLoader(
-            dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=False,
-            pin_memory=True,
-            persistent_workers= True
-        )
-        self.logger.info(f"Test {len(dataset)} x0...")
-        time_start = time.time()
-        xs = []
-        for _, (x_0, _) in enumerate(test_loader):
-            x_0 = x_0.to(self.device)
-            x_t = self.denoise.q_sample(x_0, jt.full((self.batch_size,), self.T-1, dtype=jt.int32), eps=None)
-            t_next = jt.full((self.batch_size,), time_steps.pop(), dtype=jt.int32)
-            while len(time_steps) > 0:
-                t_prev = jt.full((self.batch_size,), time_steps.pop(), dtype=jt.int32)
-                x_t = self.denoise.p_sample_ddim(x_t, t_next, t_prev, eta)
-                t_next = t_prev
-            if len(xs) == 0:
-                xs.append([((x_0 + 1) / 2 * 255).clamp(0, 255).permute(0, 2, 3, 1).cpu(), ((x_t + 1) / 2 * 255).clamp(0, 255).permute(0, 2, 3, 1).cpu()])
-        time_end = time.time()
-        self.logger.info(f"Test Time cost: {time_end - time_start:.2f}s")
-        return xs
 
     def extract_config(self):
         """

@@ -4,7 +4,7 @@
 
 1. Jittor 和 Pytorch 下 UNet 的训练速度；
 2. Jittor 和 Pytorch 下 DDPM/DDIM 的推理速度；
-<!-- 3. DDIM 在不同 num_steps 下的表现（FID/IS）； -->
+3. DDIM 在不同 num_steps 下的表现（FID）；
 
 # 一、项目搭建
 
@@ -114,7 +114,7 @@ tqdm=4.67.1
     加载预训练模型，随机采样噪声，生成图像。
     一般会使用--model和--config来指定模型和模型配置，--step指定使用DDIM采样器。
 命令行:
-    python -m script.sample [--<option>=<value>]
+    python -m script.sample [--test] [--<option>=<value>]
 选项：
     --model_path: 模型路径（默认为当前目录）
     --config_path: 配置文件路径（默认为当前目录）
@@ -127,39 +127,40 @@ tqdm=4.67.1
     --log: 是否记录日志（默认为True）
     --log_root: 日志保存路径（默认为logs/）
     --steps: 指定采样步数，不指定时使用DDPM，指定时使用DDIM
+    --test: 开启测试模式，采样出npy文件
 ```
 
 # 二、训练过程对比
 
 ## 训练参数/结构
-使用 `CIFAR-10` 数据集，原论文使用的是 `分辨率(32, 16, 8, 4)` `自注意力块(False, True, False, False)` 。对于原论文在更低分辨率下取消了自注意力块，作者猜测可能是对于过拟合的考虑，由于作者没有训练 `800k steps` 的打算，使用了 `分辨率(32, 16, 8, 4)` `自注意力块(False, True, True, False)` 想要在 `30k steps` 内尽可能提高采样效果。
+使用 `CIFAR-10` 数据集，原论文使用的是 `分辨率(32, 16, 8, 4)` `自注意力块(False, True, False, False)` 。对于原论文在更低分辨率下取消了自注意力块，作者猜测可能是对于过拟合的考虑，由于作者没有训练 `800k steps` （原论文达到 STOA 时的 steps ）的打算，使用了 `分辨率(32, 16, 8, 4)` `自注意力块(False, True, True, False)` 想要在 `30k steps` 内尽可能提高采样效果。
+
+`ddpm/ddim 物理过程`
 
 <div align="center">
     <img src="evaluation/ddpm_ddim.drawio.png">
 </div>
 
-`ddpm/ddim 物理过程`
+`UNet: eps model of ddpm/ddim （画的有些大了，可以下载下来放大看）`
 
 <div align="center">
     <img src="evaluation/eps_model.drawio.png">
 </div>
 
-`UNet: eps model of ddpm/ddim （画的有些大了，可以下载下来放大看）`
-
 ## Loss 分析
+
+`eps model 前段过程 Loss 变化 (epoch = 1 and epoch = 80)`
 
 <div align="center">
     <img src="evaluation/loss_step_early.png" width="256">
     <img src="evaluation/loss_step_latest.png" width="256">
 </div>
 
-`eps model 前段过程 Loss 变化 (epoch = 1 and epoch = 80)`
+`eps model loss`
 
 <div align="center">
     <img src="evaluation/loss_epoch.png" width="256">
 </div>
-
-`eps model loss`
 
 可以看到， Jittor 与 Pytorch 的 `loss 曲线` 几乎吻合，这在完全相同的 model 下是可以预见的，框架的不同对结果的影响是微乎其微的。前段 warmup 过程中的的略微差异，是随机性导致的结果，在前段的 `300 steps of epoch 1` 下可以看到随着步数增加， loss 随着统计量的增大逐渐趋于相同态势。
 
@@ -167,18 +168,18 @@ tqdm=4.67.1
 
 ## 训练时间对比
 
+`time per step (epoch = 1 and epoch = 80)`
+
 <div align="center">
     <img src="evaluation/time_step_early.png" width="256">
     <img src="evaluation/time_step_latest.png"width="256">
 </div>
 
-`time per step (epoch = 1 and epoch = 80)`
+`time per epoch`
 
 <div align="center">
     <img src="evaluation/time_epoch.png" width="256">
 </div>
-
-`time per epoch`
 
 训练时间上， Jittor 的训练速度明显要慢于 Pytorch，并且不稳定。前期速度非常慢，猜测是正在进行计算图优化，后期相对前期稳定在了一个较快的速度，但依旧慢于 Pytorch 。关于速度低于 Pytorch 的更多的原因，我在下面的 `GPU利用率` 部分进行了分析。
 
@@ -189,12 +190,12 @@ PyTorch average time: 139.2600934579439s
 
 ## 关于 Jittor 和 Pytoch 的 GPU
 
+`Jittor（前）和 Pytorch（后） 的 GPU 占用率曲线`
+
 <div align="center">
     <img src="evaluation/gpu_jittor.jpg" width="256">
     <img src="evaluation/gpu_pytorch.jpg" width="256">
 </div>
-
-`Jittor（前）和 Pytorch（后） 的 GPU 占用率曲线`
 
 可以看到 Jittor 的 GPU 占用率与 Pytorch 相比：
 
@@ -215,12 +216,14 @@ PyTorch average time: 139.2600934579439s
 
 使用 `CIFAR-10` 数据集，取 `30k steps` 下最低 `loss` 的已训练模型作为噪声预测器。如下展示了 Pytorch 和 Jittor 下的随机采样。
 
+`去噪过程 GIF (Pytorch) `
+
 <div align="center">
     <img src="evaluation/ddpm-sample-pytorch/0.gif" width="256">
     <img src="evaluation/ddpm-sample-pytorch/16.png" width="256">
 </div>
-
-`去噪过程 GIF (Pytorch) `
+    
+`去噪过程 PNG (Pytorch)`
 
 <div align="center">
     <img src="evaluation/ddpm-sample-pytorch/1.png" width="64">
@@ -240,15 +243,15 @@ PyTorch average time: 139.2600934579439s
     <img src="evaluation/ddpm-sample-pytorch/15.png" width="64">
     <img src="evaluation/ddpm-sample-pytorch/16.png" width="64">
 </div>
-    
-`去噪过程 PNG (Pytorch)`
+
+`去噪过程 GIF (Jittor) `
 
 <div align="center">
     <img src="evaluation/ddpm-sample-jittor/0.gif" width="256">
     <img src="evaluation/ddpm-sample-jittor/16.png" width="256">
 </div>
 
-`去噪过程 GIF (Jittor) `
+`去噪过程 PNG (Pytorch)`
 
 <div align="center">
     <img src="evaluation/ddpm-sample-jittor/1.png" width="64">
@@ -269,9 +272,41 @@ PyTorch average time: 139.2600934579439s
     <img src="evaluation/ddpm-sample-jittor/16.png" width="64">
 </div>
 
-`去噪过程 PNG (Pytorch)`
+### DDIM在各steps下的推理时间 / DDPM的推理时间 per batch128
 
-# 四、参考文献/仓库
+| 框架    | 50 steps | 250 steps | 1000 steps | DDPM |
+| ------- | -------- | ---------- | --------| ------- |
+| PyTorch | 5.48s  |   27.86s   |  111.81s  |  111.75s  |
+| Jittor  |  4.64s |  27.55s  | 107.32s | 101.85s |
+
+可以看到：
+
+- 使用 DDIM 的跳步后，速度线性降低；
+- 1000 steps 的 DDIM 和 DDPM 速度一致（DDPM略微快一些的原因可能在于DDIM中处理了噪声权重）；
+- Jittor 的采样速度比 Pytorch 略快，由于采样时无需加载数据，进一步确认 Jittor 训练瓶颈在于数据加载。
+
+`Jittor 采样时的 GPU 利用率`
+
+<div align="center">
+    <img src="evaluation/gpu_jittor_sample.png" width="256">
+</div>
+
+## 四、推理结果对比
+
+`以下均为 30k steps 下的 FID 2048 features` （比论文中的 `800k steps` FID 差的有点远 QAQ）
+
+| 框架    | 50 steps | 250 steps | 1000 steps | DDPM |
+| ------- | -------- | ---------- | --------| ------- |
+| PyTorch | 76.4280 |   69.9747   |  67.6593  |  70.1668  |
+| Jittor  |  80.1767 |  72.9338  | 71.8128 | 74.2720 |
+
+可以看到：
+
+- 使用 DDIM 的跳步后，生成质量降低（FID增大）；
+- DDPM 相比 `1000 steps DDIM` 质量有些降低，猜测可能是作者在 DDPM 物理模型中使用了超参数 $\beta$ 直接近似噪声方差，而在 DDIM 中精确计算了；
+- Jittor 的生成质量低于 Pytorch ，这是概率性的原因，作者在 `30k steps` 的训练下取了最低 loss 已训练模型，但实际上 Jittor 的最低 loss 出现在 78 epoch 而 Pytorch 出现在 103 epoch ；（加上作者并未多次实验，并且实验量采用了小批次-1000张图片）
+
+# 五、参考文献/仓库
 
 > Denoising Diffusion Probabilistic Models [论文地址](https://arxiv.org/abs/2006.11239) [仓库地址](https://github.com/hojonathanho/diffusion)
 
