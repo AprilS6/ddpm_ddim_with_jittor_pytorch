@@ -1,0 +1,281 @@
+# DDPM/DDIM 复现（Jittor及Pytorch）
+
+本项目尝试使用 Jittor 和 Pytorch 复现 `DDPM/DDIM` ，并对比在 `CIFAR-10` 数据集下
+
+1. Jittor 和 Pytorch 下 UNet 的训练速度；
+2. Jittor 和 Pytorch 下 DDPM/DDIM 的推理速度；
+3. DDIM 在不同 num_steps 下的表现（FID/IS）；
+
+# 一、项目搭建
+
+## 环境配置
+
+### Jittor 环境
+```bash
+device:
+RTX 3090(24GB)*1
+14 vCPU Intel(R) Xeon(R) Gold 6330 CPU @ 2.00GHz
+
+env:
+ubuntu22.04 
+cuda11.8 
+python3.10.16-dev
+libomp-dev
+gcc11.3.0 with libstdc++.so.6-GLIBC_3.4.30
+nvcc11.8
+
+pkgs:
+jittor=1.3.9
+matplotlib=3.10.0
+numpy=1.26.4
+pillow=11.2.1
+tqdm=4.67.1
+```
+
+### Pytorch 环境
+```bash
+device:
+RTX 3090(24GB)*1
+14 vCPU Intel(R) Xeon(R) Gold 6330 CPU @ 2.00GHz
+
+env:
+ubuntu22.04
+cuda11.8
+python3.10.16
+
+pkgs:
+pytorch=2.5.1
+pytorch-cuda=11.8
+matplotlib=3.10.0
+numpy=2.0.1
+pillow=11.0.1
+tqdm=4.67.1
+```
+
+## 项目结构
+
+ `Jittor-ver` 和 `Pytorch-ver` 结构均如下：
+```bash
+.
+├── checkpoints         # 检查点（保存已训练模型参数）
+├── core                # 核心代码
+│   ├── __init__.py
+│   ├── diffusion.py    # 物理模型，定义加噪/去噪过程，包含DDPM过程和DDIM过程
+│   ├── load_data.py    # 加载数据集
+│   └── unet.py         # 定义UNet网络结构
+├── func                # 辅助函数
+│   ├── __init__.py
+│   └── logger.py       # 日志器
+├── logs                # 日志文件
+├── samples             # 采样结果
+├── requirement.txt     # 依赖库
+└── script              # 训练/测试脚本
+    ├── __init__.py
+    ├── model.py        # 封装训练/采样/日志等功能
+    ├── sample.py       # 采样脚本
+    └── train.py        # 训练脚本
+```
+
+## 脚本
+
+### train.py
+
+```bash
+训练脚本:
+    训练新的模型，或加载预训练模型继续训练。
+    选项可以指定部分参数，完整参数可以通过json文件指定。
+    所有选项均有默认参数，可以直接运行脚本，会以当前时间戳从以默认配置训练一个新模型。
+命令行：
+    python -m script.train [--<option>=<value>]
+选项:
+    --model_path: 预训练模型路径（可加载预训练模型继续训练）
+    --config_path: 配置文件路径（可以直接指定配置文件，优先级低于命令行参数）
+    --data_root: 数据集根目录（默认为../../data/）
+    --dataset_name: 数据集名称（默认为cifar10）
+    --num_epochs: 训练轮数（默认为500）
+    --batch_size: 批大小（默认为128）
+    --num_workers: 线程数（默认为4）
+    --T: 时间步数（默认为1000）
+    --lr: 学习率（默认为1e-4）
+    --device: 设备类型（优先为cuda）
+    --log: 是否记录日志（默认为True）
+    --log_root: 日志根目录（默认为logs/）
+    --checkpoint: 检查点间隔，epoch到检查点后备份一次模型（默认为5）
+    --only_checkpoint_max: 只保留最新的检查点（默认为True）
+其他：
+    命令行仅可指定部分参数，完整参数可以通过json文件指定，在script.model.default_config可以
+    查看默认配置。配置文件中可以指定分辨率层数，各层通道数，自注意力块分布等网络结构参数。
+```
+
+### sample.py
+
+```bash
+采样脚本：
+    加载预训练模型，随机采样噪声，生成图像。
+    一般会使用--model和--config来指定模型和模型配置，--step指定使用DDIM采样器。
+命令行:
+    python -m script.sample [--<option>=<value>]
+选项：
+    --model_path: 模型路径（默认为当前目录）
+    --config_path: 配置文件路径（默认为当前目录）
+    --show_denoised: 展示降噪过程（默认展示16张）
+    --batch_size: 批大小（默认为64）
+    --gif_time: gif总时间，单位ms（默认8000ms）
+    --sample_root: 采样结果保存路径（默认为samples/）
+    --num_workers: 线程数（默认为4）
+    --device: 设备（优先为cuda）
+    --log: 是否记录日志（默认为True）
+    --log_root: 日志保存路径（默认为logs/）
+    --steps: 指定采样步数，不指定时使用DDPM，指定时使用DDIM
+```
+
+# 二、训练过程对比
+
+## 训练参数/结构
+使用 `CIFAR-10` 数据集，原论文使用的是 `分辨率(32, 16, 8, 4)` `自注意力块(False, True, False, False)` 。对于原论文在更低分辨率下取消了自注意力块，作者猜测可能是对于过拟合的考虑，由于作者没有训练 `800k steps` 的打算，使用了 `分辨率(32, 16, 8, 4)` `自注意力块(False, True, True, False)` 想要在 `30k steps` 内尽可能提高采样效果。
+
+<figure align="center">
+    <img src="evaluation/ddpm_ddim.drawio.png">
+    <figcaption>ddpm/ddim 物理过程</figcaption>
+</figure>
+
+<figure align="center">
+    <img src="evaluation/eps_model.drawio.png">
+    <figcaption>UNet: eps model of ddpm/ddim （画的有些大了，可以下载下来放大看）</figcaption>
+</figure>
+
+## Loss 分析
+
+<figure align="center">
+    <img src="evaluation/loss_step_early.png" width=256>
+    <img src="evaluation/loss_step_latest.png" width=256>
+    <figcaption>eps model 前段过程 Loss 变化 (epoch = 1 and epoch = 80)</figcaption>
+</figure>
+
+<figure align="center">
+    <img src="evaluation/loss_epoch.png" width=256>
+    <figcaption>eps model loss</figcaption>
+</figure>
+
+可以看到， Jittor 与 Pytorch 的 `loss 曲线` 几乎吻合，这在完全相同的 model 下是可以预见的，框架的不同对结果的影响是微乎其微的。前段 warmup 过程中的的略微差异，是随机性导致的结果，在前段的 `300 steps of epoch 1` 下可以看到随着步数增加， loss 随着统计量的增大逐渐趋于相同态势。
+
+最终 `loss` 全部趋于 `0.030` 左右。
+
+## 训练时间对比
+
+<figure align="center">
+    <img src="evaluation/time_step_early.png" width=256>
+    <img src="evaluation/time_step_latest.png"width=256>
+    <figcaption>time per step (epoch = 1 and epoch = 80)</figcaption>
+</figure>
+
+<figure align="center">
+    <img src="evaluation/time_epoch.png" width=256>
+    <figcaption>time per epoch</figcaption>
+</figure>
+
+训练时间上， Jittor 的训练速度明显要慢于 Pytorch，并且不稳定。前期速度非常慢，猜测是正在进行计算图优化，后期相对前期稳定在了一个较快的速度，但依旧慢于 Pytorch 。关于速度低于 Pytorch 的更多的原因，我在下面的 `GPU利用率` 部分进行了分析。
+
+```
+Jittor average time: 142.4263265306123s
+PyTorch average time: 139.2600934579439s
+```
+
+## 关于 Jittor 和 Pytoch 的 GPU
+
+<figure align="center">
+    <img src="evaluation/gpu_jittor.jpg" width=256>
+    <img src="evaluation/gpu_pytorch.jpg" width=256>
+    <figcaption>Jittor（前）和 Pytorch（后） 的 GPU 占用率曲线</figcaption>
+</figure>
+
+可以看到 Jittor 的 GPU 占用率与 Pytorch 相比：
+
+- Jittor 在单个 epoch 内出现了很多波谷， Pytorch 几乎稳定在 100% ；
+- Jittor 在 epoch 间有较大的空窗期， Pytorch 几乎没有甚至完全没有；
+
+因此 Jittor 的 GPU 利用率显著低于 Pytorch ，在尝试多种调整和优化无果后，推断可能是如下原因：
+
+- Jittor 的 Dataloader 不支持 `persistent_workers` （workers长期驻留不释放） 导致 Jittor 经常陷入数据传输的瓶颈，作者认为这是最有可能的原因；
+
+- （ jt.DataLoader 也没有 `pin_memory` （加速 CPU 到 GPU 的数据传输），但可能是因为 Jittor 的统一内存管理机制天然支持固定内存，不存在显示指定）
+
+- Jittor 的动态编译计算产生一个等待期，导致的 GPU 利用不稳定；
+
+以上均属于猜测，也可能由于一些如算子实现等方面的原因，如 Jittor 中没有 `einsum()` ，因此需要手动进行矩阵转置并进行 `matmul()` 可能效率不如 `Pytorch` 的内置实现；
+
+# 三、推理过程对比
+
+使用 `CIFAR-10` 数据集，取 `30k steps` 下最低 `loss` 的已训练模型作为噪声预测器。如下展示了 Pytorch 和 Jittor 下的随机采样。
+
+<figure align="center">
+    <img src="evaluation/ddpm-sample-pytorch/0.gif" width=256>
+    <img src="evaluation/ddpm-sample-pytorch/16.png" width=256>
+    <figcaption>去噪过程 GIF (Pytorch) </figcaption>
+</figure>
+
+<figure align="center">
+    <img src="evaluation/ddpm-sample-pytorch/1.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/2.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/3.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/4.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/5.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/6.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/7.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/8.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/9.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/10.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/11.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/12.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/13.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/14.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/15.png" width=64>
+    <img src="evaluation/ddpm-sample-pytorch/16.png" width=64>
+    <figcaption>去噪过程 PNG (Pytorch)</figcaption>
+</figure>
+
+<figure align="center">
+    <img src="evaluation/ddpm-sample-jittor/0.gif" width=256>
+    <img src="evaluation/ddpm-sample-jittor/16.png" width=256>
+    <figcaption>去噪过程 GIF (Jittor) </figcaption>
+</figure>
+
+<figure align="center">
+    <img src="evaluation/ddpm-sample-jittor/1.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/2.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/3.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/4.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/5.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/6.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/7.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/8.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/9.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/10.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/11.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/12.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/13.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/14.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/15.png" width=64>
+    <img src="evaluation/ddpm-sample-jittor/16.png" width=64>
+    <figcaption>去噪过程 PNG (Pytorch)</figcaption>
+</figure>
+
+## DDPM
+
+
+
+## DDIM
+
+# 四、参考文献/仓库
+
+> Denoising Diffusion Probabilistic Models [论文地址](https://arxiv.org/abs/2006.11239) [仓库地址](https://github.com/hojonathanho/diffusion)
+
+> Denoising Diffusion Implicit Models [论文地址](https://arxiv.org/abs/2010.02502) [仓库地址](https://github.com/ermongroup/ddim)
+
+> Jittor计图 [文档地址](https://cg.cs.tsinghua.edu.cn/jittor/assets/docs/index.html) [社区地址](https://discuss.jittor.org/)
+
+> LabML [官网地址](https://nn.labml.ai/)
+
+## More
+
+Pylance类型检查检查不了Jittor！Jittor里面很多动态类型检查，建议关掉Pylance类型检查，不然查出一堆莫须有的错误傻傻的去各种搜索QAQ。

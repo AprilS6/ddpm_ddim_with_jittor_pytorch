@@ -1,0 +1,14 @@
+data
+notes
+
+**/.ipynb_checkpoints/
+**/__pycache__/
+
+**/checkpoints/
+**/samples/
+**/tests/
+**/logs/
+
+**/test.py
+**/eps_best.pth
+**/eps_best.pkl
