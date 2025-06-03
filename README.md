@@ -136,26 +136,30 @@ tqdm=4.67.1
 
 <div align="center">
     <img src="evaluation/ddpm_ddim.drawio.png">
-    ddpm/ddim 物理过程
 </div>
+
+`ddpm/ddim 物理过程`
 
 <div align="center">
     <img src="evaluation/eps_model.drawio.png">
-    UNet: eps model of ddpm/ddim （画的有些大了，可以下载下来放大看）
 </div>
+
+`UNet: eps model of ddpm/ddim （画的有些大了，可以下载下来放大看）`
 
 ## Loss 分析
 
 <div align="center">
     <img src="evaluation/loss_step_early.png" width="256">
     <img src="evaluation/loss_step_latest.png" width="256">
-    eps model 前段过程 Loss 变化 (epoch = 1 and epoch = 80)
 </div>
+
+`eps model 前段过程 Loss 变化 (epoch = 1 and epoch = 80)`
 
 <div align="center">
     <img src="evaluation/loss_epoch.png" width="256">
-    eps model loss
 </div>
+
+`eps model loss`
 
 可以看到， Jittor 与 Pytorch 的 `loss 曲线` 几乎吻合，这在完全相同的 model 下是可以预见的，框架的不同对结果的影响是微乎其微的。前段 warmup 过程中的的略微差异，是随机性导致的结果，在前段的 `300 steps of epoch 1` 下可以看到随着步数增加， loss 随着统计量的增大逐渐趋于相同态势。
 
@@ -166,13 +170,15 @@ tqdm=4.67.1
 <div align="center">
     <img src="evaluation/time_step_early.png" width="256">
     <img src="evaluation/time_step_latest.png"width="256">
-    time per step (epoch = 1 and epoch = 80)
 </div>
+
+`time per step (epoch = 1 and epoch = 80)`
 
 <div align="center">
     <img src="evaluation/time_epoch.png" width="256">
-    time per epoch
 </div>
+
+`time per epoch`
 
 训练时间上， Jittor 的训练速度明显要慢于 Pytorch，并且不稳定。前期速度非常慢，猜测是正在进行计算图优化，后期相对前期稳定在了一个较快的速度，但依旧慢于 Pytorch 。关于速度低于 Pytorch 的更多的原因，我在下面的 `GPU利用率` 部分进行了分析。
 
@@ -186,8 +192,9 @@ PyTorch average time: 139.2600934579439s
 <div align="center">
     <img src="evaluation/gpu_jittor.jpg" width="256">
     <img src="evaluation/gpu_pytorch.jpg" width="256">
-    Jittor（前）和 Pytorch（后） 的 GPU 占用率曲线
 </div>
+
+`Jittor（前）和 Pytorch（后） 的 GPU 占用率曲线`
 
 可以看到 Jittor 的 GPU 占用率与 Pytorch 相比：
 
