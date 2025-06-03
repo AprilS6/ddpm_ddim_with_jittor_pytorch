@@ -141,13 +141,37 @@ tqdm=4.67.1
     <img src="evaluation/ddpm_ddim.drawio.png">
 </div>
 
+这是物理概率模型：
+
+-  `p_sample` 为加噪采样，可以由 $x_0$ 一步采样得到任意 $x_k$ 的加噪图片。
+- `q_sample (DDPM)` 为去噪采样，可以由 $x_t$ 采样得到 $x_{t-1}$ 的去噪图片。
+- `q_sample (DDIM)` 为去噪采样，可以由 $x_t$ 采样得到 $x_{t-k}$ 的去噪图片，但是跳步会降低采样质量。
+
 `UNet: eps model of ddpm/ddim （画的有些大了，可以下载下来放大看）`
 
 <div align="center">
     <img src="evaluation/eps_model.drawio.png">
 </div>
 
-## Loss 分析
+这是 `eps_model` ，一个预测随机噪声 $\epsilon$ 的噪声预测器，采用 `UNet` 网络结构。
+
+`UNet` : 使用 4 层分辨率 $(32, 16, 8, 4)$ ，各层注意力块使用情况为 $(False, True, True, False)$ 。分为 `Down` , `Mid`, `Up` 三个部分。
+
+`Down`: 图像经过一次卷积提升通道数后。各层通过 ResAtnBlk(DownBlk) 提取特征，再通过 DownSample(Conv) 降低特征图分辨率以提取更高层特征。
+
+`MidBlk`: 通过 ResBlk-AtnBlk-ResBlk 整合最高层的特征。
+
+`Up`: 通过 ResAtnBlk(UpBlk) 提取特征，再通过 UpSample(TransConv) 升高特征图分辨率重构图像。 UpBlk 与 DownBlk 不同的是，需要使用 skip connection 恢复低层特征，观察 UNet 的 Down ，我们发现每层都有 3 个数据，所以我们在右层使用 3 个 UpBlk 与对应的数据进行融合以恢复低层特征，这就是 Up 相比 Down 每层要多一个块的原因。
+
+`ResAtnBlk`: 残差自注意力块，先经过 ResBlk 提取特征再通过 AtnBlk(可选) 整合特征。
+
+`ResBlk`: 残差块，经过经典 norm-act-conv 结构后，通过残差连接补充部分失去的特征，保证即使该块不能学习到有效的特征，也能通过 shortcut(x) 保证起码效果不会变差（原本信息还在）。简单来说就是不会让卷积核直接梯度消失了起反效果。另外，它嵌入了 TimeEmbedding 信息，维持时间步在变换中信息一直存在不会丢失。
+
+`AtnBlk`: 注意力块（此处为自注意力块），捕捉特征图中的长距离关系，将 `ResBlk` 中捕捉到的局部特征整合为更全局的特征。比如将各种纹理特征总结为物体特征。
+
+`TimeEmbedding`: 时间编码，作者使用的是正余弦位置编码结合 MLP ，前者的优点是它的函数周期性正好对应时间的相对性，编码的泛化能力好，后者的优点是编码出来的是可学习的非线性特征，适应性好。
+
+## loss 分析
 
 `eps model loss of one epoch (epoch = 1 and epoch = 80)`
 
@@ -283,13 +307,15 @@ PyTorch average time: 139.2600934579439s
 
 - 使用 DDIM 的跳步后，速度线性降低；
 - 1000 steps 的 DDIM 和 DDPM 速度一致（DDPM略微快一些的原因可能在于DDIM中处理了噪声权重）；
-- Jittor 的采样速度比 Pytorch 略快，由于采样时无需加载数据，进一步确认 Jittor 训练瓶颈在于数据加载。
+- Jittor 的采样速度比 Pytorch 快，由于采样时无需加载数据，进一步确认 Jittor 训练瓶颈在于数据加载。
 
 `Jittor 采样时的 GPU 利用率`
 
 <div align="center">
     <img src="evaluation/gpu_jittor_sample.png" width="256">
 </div>
+
+可以看到采样过程由于没有的数据加载的瓶颈（作者推断）， Jittor 采样速度超过了 Pytorch 。
 
 ## 四、推理结果对比
 
