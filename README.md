@@ -4,7 +4,7 @@
 
 1. Jittor 和 Pytorch 下 UNet 的训练速度；
 2. Jittor 和 Pytorch 下 DDPM/DDIM 的推理速度；
-3. DDIM 在不同 num_steps 下的表现（FID/IS）；
+<!-- 3. DDIM 在不同 num_steps 下的表现（FID/IS）； -->
 
 # 一、项目搭建
 
@@ -134,28 +134,28 @@ tqdm=4.67.1
 ## 训练参数/结构
 使用 `CIFAR-10` 数据集，原论文使用的是 `分辨率(32, 16, 8, 4)` `自注意力块(False, True, False, False)` 。对于原论文在更低分辨率下取消了自注意力块，作者猜测可能是对于过拟合的考虑，由于作者没有训练 `800k steps` 的打算，使用了 `分辨率(32, 16, 8, 4)` `自注意力块(False, True, True, False)` 想要在 `30k steps` 内尽可能提高采样效果。
 
-<figure align="center">
+<div align="center">
     <img src="evaluation/ddpm_ddim.drawio.png">
-    <figcaption>ddpm/ddim 物理过程</figcaption>
-</figure>
+    ddpm/ddim 物理过程
+</div>
 
-<figure align="center">
+<div align="center">
     <img src="evaluation/eps_model.drawio.png">
-    <figcaption>UNet: eps model of ddpm/ddim （画的有些大了，可以下载下来放大看）</figcaption>
-</figure>
+    UNet: eps model of ddpm/ddim （画的有些大了，可以下载下来放大看）
+</div>
 
 ## Loss 分析
 
-<figure align="center">
-    <img src="evaluation/loss_step_early.png" width=256>
-    <img src="evaluation/loss_step_latest.png" width=256>
-    <figcaption>eps model 前段过程 Loss 变化 (epoch = 1 and epoch = 80)</figcaption>
-</figure>
+<div align="center">
+    <img src="evaluation/loss_step_early.png" width="256">
+    <img src="evaluation/loss_step_latest.png" width="256">
+    eps model 前段过程 Loss 变化 (epoch = 1 and epoch = 80)
+</div>
 
-<figure align="center">
-    <img src="evaluation/loss_epoch.png" width=256>
-    <figcaption>eps model loss</figcaption>
-</figure>
+<div align="center">
+    <img src="evaluation/loss_epoch.png" width="256">
+    eps model loss
+</div>
 
 可以看到， Jittor 与 Pytorch 的 `loss 曲线` 几乎吻合，这在完全相同的 model 下是可以预见的，框架的不同对结果的影响是微乎其微的。前段 warmup 过程中的的略微差异，是随机性导致的结果，在前段的 `300 steps of epoch 1` 下可以看到随着步数增加， loss 随着统计量的增大逐渐趋于相同态势。
 
@@ -163,16 +163,16 @@ tqdm=4.67.1
 
 ## 训练时间对比
 
-<figure align="center">
-    <img src="evaluation/time_step_early.png" width=256>
-    <img src="evaluation/time_step_latest.png"width=256>
-    <figcaption>time per step (epoch = 1 and epoch = 80)</figcaption>
-</figure>
+<div align="center">
+    <img src="evaluation/time_step_early.png" width="256">
+    <img src="evaluation/time_step_latest.png"width="256">
+    time per step (epoch = 1 and epoch = 80)
+</div>
 
-<figure align="center">
-    <img src="evaluation/time_epoch.png" width=256>
-    <figcaption>time per epoch</figcaption>
-</figure>
+<div align="center">
+    <img src="evaluation/time_epoch.png" width="256">
+    time per epoch
+</div>
 
 训练时间上， Jittor 的训练速度明显要慢于 Pytorch，并且不稳定。前期速度非常慢，猜测是正在进行计算图优化，后期相对前期稳定在了一个较快的速度，但依旧慢于 Pytorch 。关于速度低于 Pytorch 的更多的原因，我在下面的 `GPU利用率` 部分进行了分析。
 
@@ -183,11 +183,11 @@ PyTorch average time: 139.2600934579439s
 
 ## 关于 Jittor 和 Pytoch 的 GPU
 
-<figure align="center">
-    <img src="evaluation/gpu_jittor.jpg" width=256>
-    <img src="evaluation/gpu_pytorch.jpg" width=256>
-    <figcaption>Jittor（前）和 Pytorch（后） 的 GPU 占用率曲线</figcaption>
-</figure>
+<div align="center">
+    <img src="evaluation/gpu_jittor.jpg" width="256">
+    <img src="evaluation/gpu_pytorch.jpg" width="256">
+    Jittor（前）和 Pytorch（后） 的 GPU 占用率曲线
+</div>
 
 可以看到 Jittor 的 GPU 占用率与 Pytorch 相比：
 
@@ -208,63 +208,57 @@ PyTorch average time: 139.2600934579439s
 
 使用 `CIFAR-10` 数据集，取 `30k steps` 下最低 `loss` 的已训练模型作为噪声预测器。如下展示了 Pytorch 和 Jittor 下的随机采样。
 
-<figure align="center">
-    <img src="evaluation/ddpm-sample-pytorch/0.gif" width=256>
-    <img src="evaluation/ddpm-sample-pytorch/16.png" width=256>
-    <figcaption>去噪过程 GIF (Pytorch) </figcaption>
-</figure>
+<div align="center">
+    <img src="evaluation/ddpm-sample-pytorch/0.gif" width="256">
+    <img src="evaluation/ddpm-sample-pytorch/16.png" width="256">
+    去噪过程 GIF (Pytorch) 
+</div>
 
-<figure align="center">
-    <img src="evaluation/ddpm-sample-pytorch/1.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/2.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/3.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/4.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/5.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/6.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/7.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/8.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/9.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/10.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/11.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/12.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/13.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/14.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/15.png" width=64>
-    <img src="evaluation/ddpm-sample-pytorch/16.png" width=64>
-    <figcaption>去噪过程 PNG (Pytorch)</figcaption>
-</figure>
+<div align="center">
+    <img src="evaluation/ddpm-sample-pytorch/1.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/2.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/3.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/4.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/5.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/6.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/7.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/8.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/9.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/10.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/11.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/12.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/13.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/14.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/15.png" width="64">
+    <img src="evaluation/ddpm-sample-pytorch/16.png" width="64">
+    去噪过程 PNG (Pytorch)
+</div>
 
-<figure align="center">
-    <img src="evaluation/ddpm-sample-jittor/0.gif" width=256>
-    <img src="evaluation/ddpm-sample-jittor/16.png" width=256>
-    <figcaption>去噪过程 GIF (Jittor) </figcaption>
-</figure>
+<div align="center">
+    <img src="evaluation/ddpm-sample-jittor/0.gif" width="256">
+    <img src="evaluation/ddpm-sample-jittor/16.png" width="256">
+    去噪过程 GIF (Jittor) 
+</div>
 
-<figure align="center">
-    <img src="evaluation/ddpm-sample-jittor/1.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/2.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/3.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/4.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/5.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/6.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/7.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/8.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/9.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/10.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/11.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/12.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/13.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/14.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/15.png" width=64>
-    <img src="evaluation/ddpm-sample-jittor/16.png" width=64>
-    <figcaption>去噪过程 PNG (Pytorch)</figcaption>
-</figure>
-
-## DDPM
-
-
-
-## DDIM
+<div align="center">
+    <img src="evaluation/ddpm-sample-jittor/1.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/2.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/3.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/4.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/5.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/6.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/7.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/8.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/9.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/10.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/11.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/12.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/13.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/14.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/15.png" width="64">
+    <img src="evaluation/ddpm-sample-jittor/16.png" width="64">
+    去噪过程 PNG (Pytorch)
+</div>
 
 # 四、参考文献/仓库
 
