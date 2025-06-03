@@ -323,7 +323,7 @@ PyTorch average time: 139.2600934579439s
 
 可以看到采样过程由于没有的数据加载的瓶颈（作者推断）， Jittor 采样速度超过了 Pytorch 。
 
-## 四、推理结果对比
+# 四、推理结果对比
 
 `以下均为 30k steps 下的 FID 2048 features` （比论文中的 `800k steps` FID 差的有点远 QAQ）
 
