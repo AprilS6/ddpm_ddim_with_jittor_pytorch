@@ -171,6 +171,12 @@ tqdm=4.67.1
 
 `TimeEmbedding`: 时间编码，作者使用的是正余弦位置编码结合 MLP ，前者的优点是它的函数周期性正好对应时间的相对性，编码的泛化能力好，后者的优点是编码出来的是可学习的非线性特征，适应性好。
 
+`其他`: 作者本来打算嵌入文本提示的，但是由于复现 DDPM 时下意识跟着原论文做了没有文本提示版本的并完成了训练，后续没有时间精力成本继续加入文本提示（因为主要目标已经实现了，加入文本提示也不能增加很多内容，还得各种调参训练，还得扯上 CFG 等等加起来又是好几篇文章）。在此简单叙述一下：在 ResAtnBlk 中，可以在 SelfAtn 后添加一个 CrossAtn 交叉注意力，通过 text-prompt 为 key , image-feature 为 query , 整合特征从而引导 image-feature 往 text-prompt 方向靠拢。为什么 time-step 用 TimeEmbedding 直接编码嵌入而 text-prompt 却要用 CrossAtn 呢？作者有这些方面的观点：
+
+- time-step 是一个标量，可以简单地编码融合进图像，而 text-prompt 是 tokens ，无法被简单地编码；
+- time-step 本身就是带噪图像本身的属性， ResBlk + SelfAtn 直接融合整理自身属性无可厚非（和 shortcut 也许有差不多的意思），而 text-prompt 是外部的动态提示；
+- text-prompt 的 tokens 具有复杂语义和全局关系，通过 CrossAtn 的优势可以充分引导全局语义特征向 text-prompt 方向靠拢，还能动态加权特征引导信息。
+
 ## loss 分析
 
 `eps model loss of one epoch (epoch = 1 and epoch = 80)`
