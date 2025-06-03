@@ -149,7 +149,7 @@ tqdm=4.67.1
 
 ## Loss 分析
 
-`eps model 前段过程 Loss 变化 (epoch = 1 and epoch = 80)`
+`eps model loss of one epoch (epoch = 1 and epoch = 80)`
 
 <div align="center">
     <img src="evaluation/loss_step_early.png" width="256">
