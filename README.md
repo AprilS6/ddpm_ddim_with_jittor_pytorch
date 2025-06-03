@@ -303,7 +303,7 @@ PyTorch average time: 139.2600934579439s
 可以看到：
 
 - 使用 DDIM 的跳步后，生成质量降低（FID增大）；
-- DDPM 相比 `1000 steps DDIM` 质量有些降低，猜测可能是作者在 DDPM 物理模型中使用了超参数 $\beta$ 直接近似噪声方差，而在 DDIM 中精确计算了；
+- DDPM 相比 `1000 steps DDIM` 质量有些降低，猜测可能是作者在 DDPM 物理模型中使用了超参数 $\beta$ 直接近似噪声方差，而在 DDIM 中精确计算了；（预期结果为效果等效）
 - Jittor 的生成质量低于 Pytorch ，这是概率性的原因，作者在 `30k steps` 的训练下取了最低 loss 已训练模型，但实际上 Jittor 的最低 loss 出现在 78 epoch 而 Pytorch 出现在 103 epoch ；（加上作者并未多次实验，并且实验量采用了小批次-1000张图片）
 
 # 五、参考文献/仓库
