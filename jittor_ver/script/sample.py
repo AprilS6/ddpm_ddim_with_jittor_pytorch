@@ -16,6 +16,7 @@
     --log: 是否记录日志（默认为True）
     --log_root: 日志保存路径（默认为logs/{timestamp}/）
     --steps: 指定采样步数，不指定时使用DDPM，指定时使用DDIM
+    --test: 测试模式，生成npy文件
 """
 
 import argparse

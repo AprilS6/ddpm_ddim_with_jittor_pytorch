@@ -78,7 +78,7 @@ tqdm=4.67.1
 
 ## 脚本
 
-### train.py
+### train.py (数据加载脚本封装在其参数中)
 
 ```bash
 训练脚本:
@@ -107,7 +107,7 @@ tqdm=4.67.1
     查看默认配置。配置文件中可以指定分辨率层数，各层通道数，自注意力块分布等网络结构参数。
 ```
 
-### sample.py
+### sample.py （测试脚本封装在其参数中）
 
 ```bash
 采样脚本：
@@ -133,7 +133,8 @@ tqdm=4.67.1
 # 二、训练过程对比
 
 ## 训练参数/结构
-使用 `CIFAR-10` 数据集，原论文使用的是 `分辨率(32, 16, 8, 4)` `自注意力块(False, True, False, False)` 。对于原论文在更低分辨率下取消了自注意力块，作者猜测可能是对于过拟合的考虑，由于作者没有训练 `800k steps` （原论文达到 STOA 时的 steps ）的打算，使用了 `分辨率(32, 16, 8, 4)` `自注意力块(False, True, True, False)` 想要在 `30k steps` 内尽可能提高采样效果。
+
+使用 `CIFAR-10` 数据集，原论文使用的是 `分辨率(32, 16, 8, 4)` `自注意力块(False, True, False, False)` 。对于原论文在更低分辨率下取消了自注意力块，作者猜测可能是对于过拟合的考虑，由于作者没有训练 `800k steps` （原论文达到 STOA 时的 steps ）的打算，使用了 `分辨率(32, 16, 8, 4)` `自注意力块(False, True, True, False)` 想要在 `40k steps` 内尽可能提高采样效果。
 
 `ddpm/ddim 物理过程`
 
@@ -244,7 +245,7 @@ PyTorch average time: 139.2600934579439s
 
 # 三、推理过程对比
 
-使用 `CIFAR-10` 数据集，取 `30k steps` 下最低 `loss` 的已训练模型作为噪声预测器。如下展示了 Pytorch 和 Jittor 下的随机采样。
+使用 `CIFAR-10` 数据集，取 `40k steps` 下最低 `loss` 的已训练模型作为噪声预测器。如下展示了 Pytorch 和 Jittor 下的随机采样。
 
 `去噪过程 GIF (Pytorch) `
 
@@ -325,7 +326,7 @@ PyTorch average time: 139.2600934579439s
 
 # 四、推理结果对比
 
-`以下均为 30k steps 下的 FID 2048 features` （比论文中的 `800k steps` FID 差的有点远 QAQ）
+`以下均为 40k steps 下的 FID 2048 features` （比论文中的 `800k steps` FID 差的有点远 QAQ）
 
 | 框架    | 50 steps | 250 steps | 1000 steps | DDPM |
 | ------- | -------- | ---------- | --------| ------- |
@@ -336,7 +337,7 @@ PyTorch average time: 139.2600934579439s
 
 - 使用 DDIM 的跳步后，生成质量降低（FID增大）；
 - DDPM 相比 `1000 steps DDIM` 质量有些降低，猜测可能是作者在 DDPM 物理模型中使用了超参数 $\beta$ 直接近似噪声方差，而在 DDIM 中精确计算了；（预期结果为效果等效）
-- Jittor 的生成质量低于 Pytorch ，这是概率性的原因，作者在 `30k steps` 的训练下取了最低 loss 已训练模型，但实际上 Jittor 的最低 loss 出现在 78 epoch 而 Pytorch 出现在 103 epoch ；（加上作者并未多次实验，并且实验量采用了小批次-1000张图片）
+- Jittor 的生成质量低于 Pytorch ，这是概率性的原因，作者在 `40k steps` 的训练下取了最低 loss 已训练模型，但实际上 Jittor 的最低 loss 出现在 78 epoch 而 Pytorch 出现在 103 epoch ；（加上作者并未多次实验，并且实验量采用了小批次-1000张图片）
 
 # 五、参考文献/仓库
 
