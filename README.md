@@ -4,7 +4,7 @@
 
 1. Jittor 和 Pytorch 下 UNet 的训练速度；
 2. Jittor 和 Pytorch 下 DDPM/DDIM 的推理速度；
-3. DDIM 在不同 num_steps 下的表现（FID）；
+3. DDIM 在不同 num_steps 下的表现（FID）
 
 # 一、项目搭建
 
