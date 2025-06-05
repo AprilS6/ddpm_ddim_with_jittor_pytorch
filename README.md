@@ -282,7 +282,7 @@ PyTorch average time: 139.2600934579439s
     <img src="evaluation/ddpm-sample-jittor/16.png" width="256">
 </div>
 
-`去噪过程 PNG (Pytorch)`
+`去噪过程 PNG (Jittor)`
 
 <div align="center">
     <img src="evaluation/ddpm-sample-jittor/1.png" width="64">
